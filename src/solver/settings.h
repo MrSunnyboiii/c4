@@ -6,9 +6,20 @@
 // Defines settings which can be tuned for the target machine and target problem.
 // In rough order of importance.
 
-// The shape of the board.
+// The shape of the board. Can be overridden at build time by defining C4_BOARD_WIDTH and
+// C4_BOARD_HEIGHT (see the BOARD_WIDTH/BOARD_HEIGHT CMake options), which allows one source
+// tree to produce solvers for many board sizes.
+#ifdef C4_BOARD_WIDTH
+inline constexpr int BOARD_WIDTH = C4_BOARD_WIDTH;
+#else
 inline constexpr int BOARD_WIDTH = 7;
+#endif
+
+#ifdef C4_BOARD_HEIGHT
+inline constexpr int BOARD_HEIGHT = C4_BOARD_HEIGHT;
+#else
 inline constexpr int BOARD_HEIGHT = 6;
+#endif
 
 // Enable/disable strong solutions:
 //   * Weak solution: Will find if either player can force a win or if the game will be a draw after
@@ -19,7 +30,12 @@ inline constexpr int BOARD_HEIGHT = 6;
 inline constexpr bool STRONG_SOLVES_ENABLED = true;
 
 // Number of search threads. If 0, the number concurrent threads available on the machine is used.
+// Can be overridden at build time by defining C4_NUM_THREADS (see the NUM_THREADS CMake option).
+#ifdef C4_NUM_THREADS
+inline constexpr int NUM_THREADS = C4_NUM_THREADS;
+#else
 inline constexpr int NUM_THREADS = 0;
+#endif
 
 // This setting controls the amount of memory the solver is allowed to use. Increasing the number
 // of entries will reduce solve times significantly.
@@ -36,7 +52,14 @@ inline constexpr int NUM_THREADS = 0;
 //  * 4294967311 : 32 GB
 //  * 6442450967 : 48 GB
 //  * 7247757317 : 54 GB
+//
+// Can be overridden at build time by defining C4_NUM_TABLE_ENTRIES (see the NUM_TABLE_ENTRIES
+// CMake option). Browser builds use a smaller table to fit in WASM memory limits.
+#ifdef C4_NUM_TABLE_ENTRIES
+inline constexpr uint64_t NUM_TABLE_ENTRIES = C4_NUM_TABLE_ENTRIES;
+#else
 inline constexpr uint64_t NUM_TABLE_ENTRIES = 134217757;
+#endif
 
 // Enable 2 MB pages, instead of 4 KB. Not implemented for Macs.
 inline constexpr bool ENABLE_HUGE_PAGES = false;

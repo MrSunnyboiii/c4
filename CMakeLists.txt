@@ -13,13 +13,41 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #   * WASM     - builds a WASM binary for the web UI.
 set(MODE "OPTIMISE" CACHE STRING "Goal for the project build: OPTIMISE, DEBUG, WASM")
 
+# Optional build-time overrides of src/solver/settings.h. If empty, the defaults
+# in settings.h are used. These allow one source tree to build solvers for many
+# board sizes without editing source files (cmake -DBOARD_WIDTH=7 -DBOARD_HEIGHT=5 .).
+set(BOARD_WIDTH "" CACHE STRING "Override BOARD_WIDTH in settings.h")
+set(BOARD_HEIGHT "" CACHE STRING "Override BOARD_HEIGHT in settings.h")
+set(NUM_THREADS "" CACHE STRING "Override NUM_THREADS in settings.h")
+set(NUM_TABLE_ENTRIES "" CACHE STRING "Override NUM_TABLE_ENTRIES in settings.h")
+
+# WASM-only options. EXPORT_NAME scopes each build into its own module factory so
+# several board sizes can be loaded by one page without clashing globals.
+set(WASM_EXPORT_NAME "createSolverModule" CACHE STRING "Name of the generated WASM module factory")
+set(WASM_INITIAL_MEMORY "1500053504" CACHE STRING "Initial WASM memory in bytes; must fit the transposition table")
+
+# Collect the settings.h overrides which were set.
+set(SETTINGS_OVERRIDES "")
+if (BOARD_WIDTH)
+    list(APPEND SETTINGS_OVERRIDES "C4_BOARD_WIDTH=${BOARD_WIDTH}")
+endif()
+if (BOARD_HEIGHT)
+    list(APPEND SETTINGS_OVERRIDES "C4_BOARD_HEIGHT=${BOARD_HEIGHT}")
+endif()
+if (NUM_THREADS)
+    list(APPEND SETTINGS_OVERRIDES "C4_NUM_THREADS=${NUM_THREADS}")
+endif()
+if (NUM_TABLE_ENTRIES)
+    list(APPEND SETTINGS_OVERRIDES "C4_NUM_TABLE_ENTRIES=${NUM_TABLE_ENTRIES}ULL")
+endif()
+
 # Find source files.
 file(GLOB_RECURSE SRCS "${CMAKE_SOURCE_DIR}/src/solver/*.cpp")
 file(GLOB_RECURSE TSTS "${CMAKE_SOURCE_DIR}/tst/*.cpp")
 
 set(JS_BINDINGS "${CMAKE_SOURCE_DIR}/ui/bindings.cpp")
 set(JS_LIBRARY "${CMAKE_SOURCE_DIR}/ui/library.js")
-set(JS_OUTPUT "${CMAKE_SOURCE_DIR}/ui/artifact/wasm")
+set(JS_OUTPUT "${CMAKE_SOURCE_DIR}/ui/artifact/wasm" CACHE PATH "Output directory of the compiled WASM module")
 
 # Check if we are building WASM.
 if (MODE MATCHES "WASM")
@@ -29,10 +57,11 @@ if (MODE MATCHES "WASM")
     add_executable(solver ${SRCS} ${JS_BINDINGS})
 
     # Setup Emscripten flags.
-    target_compile_definitions(solver PUBLIC NDEBUG)
+    target_compile_definitions(solver PUBLIC NDEBUG ${SETTINGS_OVERRIDES})
     target_compile_options(solver PUBLIC -O3 -flto -sUSE_PTHREADS=1)
     target_link_options(solver PUBLIC -O3 -flto -sUSE_PTHREADS=1
-        -lembind -sWASM=1 -sWASM_BIGINT -sINITIAL_MEMORY=1500053504
+        -lembind -sWASM=1 -sWASM_BIGINT -sINITIAL_MEMORY=${WASM_INITIAL_MEMORY}
+        -sMODULARIZE=1 -sEXPORT_NAME=${WASM_EXPORT_NAME}
         --js-library ${JS_LIBRARY})
 
     # Move compiled output to the UI directory.
@@ -50,6 +79,7 @@ add_executable(test ${TSTS})
 
 # All executables need to be linked with the solver lib.
 add_library(solver OBJECT ${SRCS})
+target_compile_definitions(solver PUBLIC ${SETTINGS_OVERRIDES})
 target_link_libraries(book PRIVATE solver)
 target_link_libraries(c4 PRIVATE solver)
 target_link_libraries(play PRIVATE solver)

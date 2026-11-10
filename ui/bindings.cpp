@@ -44,6 +44,11 @@ EMSCRIPTEN_BINDINGS(solver_module) {
         register_type<board>("BigInt");
     }
 
+    // Expose the compile-time board shape so pages can verify they loaded
+    // the module for the intended board size.
+    constant("BOARD_WIDTH", BOARD_WIDTH);
+    constant("BOARD_HEIGHT", BOARD_HEIGHT);
+
     function("solve_async", &solve_async);
     class_<Solver>("Solver")
         .constructor<>()
