@@ -72,7 +72,13 @@ On Windows, the repo can be imported as a Visual Studio CMake project.
 Adjust the values in [src/solver/settings.h](./src/solver/settings.h) then recompile
 to set the size of the board, number of threads, memory usage, and more. Increasing
 number of threads and memory usage to the maximum available on your machine will reduce
-solve time significantly.
+solve time significantly. The board size, thread count, and table size can also be set
+at build time without editing source files:
+
+```
+$ cmake --preset optimise -DBOARD_WIDTH=7 -DBOARD_HEIGHT=5
+$ cmake --build --preset optimise
+```
 
 Increasing the board size will exponentially increase the difficulty of the solve, so
 solve times will increase quickly if the board size is changed. For example, on my machine
@@ -86,6 +92,29 @@ to generate the tables above.
 with independently verified scores.
 4. **book**: Generates an opening book by solving all positions up to a set depth.
 5. **random**: Generates random games for testing and benchmarking.
+
+### Web UI builds
+
+`cmake -DMODE=WASM` builds the browser (Emscripten) version of the solver as a
+modularized WASM module. The module factory name (`WASM_EXPORT_NAME`), initial
+memory (`WASM_INITIAL_MEMORY`), output directory (`JS_OUTPUT`), and the
+settings overrides above can all be passed on the command line, so one source
+tree can produce solvers for many board sizes which can be loaded side by side
+on one page. Each page receives results through the module-scoped
+`Module.onSolverMessage` callback, so replies never leak between tabs or
+between modules.
+
+[scripts/build-wasm-variants.sh](./scripts/build-wasm-variants.sh) builds every
+rectangular board with at least 4 columns, at least 4 rows, and at most 35
+cells (14 variants, both orientations where they qualify) into separate
+`<width>x<height>/wasm/` directories. The builds are strong solvers, use
+browser-safe memory settings (64 MB transposition table in 128 MB of initial
+memory), and preload no opening book, so no `solver.data` file is required.
+
+```
+$ source /path/to/emsdk/emsdk_env.sh
+$ ./scripts/build-wasm-variants.sh [output-root] [sizes...]
+```
 
 ## Credits
 
